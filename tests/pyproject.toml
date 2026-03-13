@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pykochbuch"
+version = "0.1.0"
+description = "A simple cookbook project"
+authors = [
+    {name = "Dr. Alireza Bayat", email = "dr.bayat.alireza@gmail.com"}
+]
+dependencies = [] # Add external libraries here
+
+[tool.setuptools.packages.find]
+where = ["src"]
