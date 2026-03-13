@@ -6,5 +6,7 @@ dist/
 wheels/
 *.egg-info
 
+# das ist ein kommentar 
+
 # Virtual environments
 .venv
