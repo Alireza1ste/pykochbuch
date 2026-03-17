@@ -11,17 +11,17 @@ class RecipeBook:
         else:
             self.recepes[recipe.title]=recipe
     
-        def remove_recipe(self, title: str) -> dict:
-            if title not in self.recepes:
-                raise KeyError(f"The recipe {title} was not found.")
-            else:
-                del self.recepes[title]
-        
-        def get_recipe(self, title: str) -> Recipe:
-            if title not in self.recepes:
-                raise KeyError(f"There is no recipe for {title}.")
-            return self.recepes.get(title)
-        
-        @property
-        def recipes(self) -> list[Recipe]:
-            return [recipe for recipe in self.recepes.values()]
+    def remove_recipe(self, title: str) -> dict:
+        if title not in self.recepes:
+            raise KeyError(f"The recipe {title} was not found.")
+        else:
+            del self.recepes[title]
+    
+    def get_recipe(self, title: str) -> Recipe:
+        if title not in self.recepes:
+            raise KeyError(f"There is no recipe for {title}.")
+        return self.recepes.get(title)
+    
+    @property
+    def recipes(self) -> list[Recipe]:
+        return [recipe for recipe in self.recepes.values()]
