@@ -21,7 +21,7 @@ class Recipe:
             raise ValueError("There should be at least one ingredient.")
         if len(self.instructions) < 1:
             raise ValueError("There should be at least one instruction.")
-    
+
     def scale(self, factor: float) -> Recipe:
         return Recipe(
             title = self.title,

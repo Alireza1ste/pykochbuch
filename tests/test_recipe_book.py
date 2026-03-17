@@ -12,8 +12,7 @@ r = Recipe("Pizza dough",
            15,
            (i1, i2),
            ("mixing flour with watter and resting for 10 minutes",),
-           {"for lunch",},
-           )
+           tags=frozenset(["vegan", "italian"]),)
 rb = RecipeBook()
 rb.add_recipe(r)
 
