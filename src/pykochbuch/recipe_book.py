@@ -63,12 +63,10 @@ class RecipeBook:
         return [
             recipe for recipe in self.recepes.values()
             if recipe.prep_time_minutes <= minutes
-        ]
+                ]
     
-    def search(self, title:str | None = None,
-               ingredient:str | None = None,
-                tag: str | None = None,
-                 max_time:float | None = None) -> list[Recipe]:
+    def search(self, title:str | None = None, ingredient:str | None = None,
+                tag: str | None = None, max_time:float | None = None) -> list[Recipe]:
         result = set(self.recepes.values())
         if title:
             result &= set(self.search_by_title(title))
