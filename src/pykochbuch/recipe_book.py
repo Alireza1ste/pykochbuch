@@ -30,16 +30,18 @@ class RecipeBook:
     def search_by_title(self, query:str) -> list[Recipe]:
         # pattern = re.compile(query, re.IGNORECASE) :alternative
         # return [recipe for recipe in self.recepes.values() if pattern.search(recipe.title)]
-        return [
-            recipe for recipe in self.recepes.values()
-                if re.search(query, recipe.title, re.IGNORECASE)
-                ]
+        results = []
+        for recipe in self.recepes.values():
+                if re.search(query, recipe.title, re.IGNORECASE):
+                    results.append(recipe)
+        return results
     
     def search_by_ingredient(self, name: str) -> list[Recipe]:
         search_name = name.strip().lower()
         return [
             recipe for recipe in self.recepes.values()
-            if any(ingredient.name.lower() == search_name for ingredient in recipe.ingredients)
+            if any(ingredient.name.lower() == search_name
+                   for ingredient in recipe.ingredients)
         ]
         # Alternative 
         # result=[]
