@@ -10,6 +10,7 @@ def pancakes_cake() -> RecipeBook:
     r1=Recipe(
         title="Pancakes",
         servings=4,
+        prep_time_minutes=20,
         ingredients=(
             Ingredient("flour", 250, Unit.GRAM),
             Ingredient("milk", 500, Unit.MILLILITER),
@@ -23,6 +24,7 @@ def pancakes_cake() -> RecipeBook:
     r2=Recipe(
         title="Cake",
         servings=8,
+        prep_time_minutes=60,
         ingredients=(
             Ingredient("flour", 300, Unit.GRAM),
             Ingredient("sugar", 200, Unit.GRAM),
@@ -62,3 +64,32 @@ def test_search_tags(pancakes_cake):
     assert len(t2) == 1
     assert t1[0].title == "Pancakes"
     assert t2[0].title == "Cake"
+
+def test_time_filter(pancakes_cake):
+    ti1=pancakes_cake.filter_by_max_time(20)
+    ti2=pancakes_cake.filter_by_max_time(60)
+
+    assert len(ti1) == 1
+    assert len(ti2) == 2
+    assert ti1[0].title == "Pancakes"
+    assert ti2[0].title == "Pancakes"
+    assert ti2[1].title == "Cake"
+
+def test_merge_same_unit(pancakes_cake):
+    sh= ShoppingList()
+    pancakes_cake_list=[value for value in pancakes_cake.recepes.values()]
+    sh = ShoppingList.from_recipes(pancakes_cake_list)
+
+    assert sh.shopping_list_dict == {
+        "flour" : [550, Unit.GRAM],
+        "milk" : [500, Unit.MILLILITER],
+        "eggs" : [5, Unit.PIECE],
+        "sugar" : [200, Unit.GRAM],
+    }
+
+def test_empty_recipe_book():
+    sh= ShoppingList()
+    pancakes_cake_list= []
+    sh = ShoppingList.from_recipes(pancakes_cake_list)
+
+    assert sh.shopping_list_dict == {}
