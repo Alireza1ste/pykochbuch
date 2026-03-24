@@ -107,4 +107,60 @@ def test_saving_and_loading_round_trip(temp_path, pancakes):
             instructions=("Mix", "Cook"),
             tags=frozenset(["easy"]),
         )
-        
+
+
+def test_saving_and_loading_empty_recipe(temp_path):
+    test_file = temp_path / "empty_recipe.json"
+    local_store = JsonStore(path= test_file)
+    with pytest.raises(ValueError):
+        empty=Recipe(title="", servings=1)
+        local_store.save_recipe(empty)
+
+def test_saving_duplicated_recipe(temp_path, pancakes):
+    test_file = temp_path / "duplicated_recipe.json"
+    local_store = JsonStore(path= test_file)
+    local_store.save_recipe(pancakes) 
+    with pytest.raises(ValueError):
+        local_store.save_recipe(pancakes)  
+
+def test_getting_unknown_recipe(temp_path, pancakes):
+    test_file = temp_path / "duplicated_recipe.json"
+    local_store = JsonStore(path= test_file)
+    local_store.save_recipe(pancakes) 
+    with pytest.raises(KeyError):
+        local_store.get_recipe("Pizza")
+
+def test_saving_and_loading_several_recipes_round_trip(temp_path, pancakes, cake):
+    test_file = temp_path / "round_trip_several_recipes.json"
+    local_store = JsonStore(path= test_file)
+    local_store.save_recipe(pancakes)
+    local_store.save_recipe(cake)
+    with open(test_file, "r", encoding= "utf-8") as file:
+        json_list = json.load(file)
+        python_data=local_store.get_all_recipes()
+        assert python_data == [
+            Recipe(
+            title="Pancakes",
+            servings=4,
+            prep_time_minutes=20,
+            ingredients=(
+                Ingredient("flour", 250, Unit.GRAM),
+                Ingredient("milk", 500, Unit.MILLILITER),
+                Ingredient("eggs", 2, Unit.PIECE),
+            ),
+            instructions=("Mix", "Cook"),
+            tags=frozenset(["easy"]),
+        ),
+            Recipe(
+            title="Cake",
+            servings=8,
+            prep_time_minutes=60,
+            ingredients=(
+                Ingredient("flour", 300, Unit.GRAM),
+                Ingredient("sugar", 200, Unit.GRAM),
+                Ingredient("eggs", 3, Unit.PIECE),
+            ),
+            instructions=("Mix", "Bake"),
+            tags=frozenset(["difficult"]),
+        )
+        ]        
