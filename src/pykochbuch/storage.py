@@ -43,7 +43,7 @@ def _dict_to_recipe(data: dict) -> Recipe:
     )
 
 @dataclass
-class JasonStore:
+class JsonStore:
     path: Path# my_path=Path("src/pykochbuch/all_recipes.json")
 
     def save_recipe(self, recipe: Recipe):
