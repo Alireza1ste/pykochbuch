@@ -1,12 +1,12 @@
 from pathlib import Path
 import pytest,re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pykochbuch.unit import Unit
 from pykochbuch.ingredient import Ingredient
 from pykochbuch.recipe import Recipe
 from pykochbuch.recipe_book import RecipeBook
 from pykochbuch.shopping_list import ShoppingList
-import json
+import json, sqlite3
 
 def _recipe_to_dict(recipe: Recipe) -> dict:
     return{
@@ -125,4 +125,50 @@ class JsonStore:
         if not found_query:
             raise KeyError(f"The recipe '{query}' was not found.")
         return found_query
+
+@dataclass
+class SqliteStore:
+    db_path: str | Path
+    connection : sqlite3.Connection = field(init=False)
+
+    def __post_init__(self):
+        self.connection = sqlite3.connect(str(self.db_path))
+        # Enable Foreign Key support (SQLite has it off by default!)
+        self.connection.execute("PRAGMA foreign_keys = ON;")
+        self._create_tables()
     
+    def _create_tables(self):
+        cur = self.connection.cursor()
+        cur.execute("""CREATE TABLE IF NOT EXISTS recipes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT UNIQUE NOT NULL,
+                description TEXT NOT NULL DEFAULT '',
+                servings INTEGER NOT NULL,
+                prep_time_minutes INTEGER NOT NULL DEFAULT 0);""")
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS ingredients (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recipe_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                amount REAL NOT NULL,
+                unit TEXT NOT NULL,
+                FOREIGN KEY (recipe_id) REFERENCES recipes(id)
+            );"""
+        )
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS instructions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recipe_id INTEGER NOT NULL,
+                step_number INTEGER NOT NULL,
+                instruction TEXT NOT NULL,
+                FOREIGN KEY (recipe_id) REFERENCES recipes(id)
+            );""")
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS recipe_tags (
+                recipe_id INTEGER NOT NULL,
+                tag TEXT NOT NULL,
+                PRIMARY KEY (recipe_id, tag),
+                FOREIGN KEY (recipe_id) REFERENCES recipes(id)
+            );""")
+        
+        self.connection.commit()
