@@ -200,8 +200,51 @@ class SqliteStore:
             )
         
         for tag in recipe.tags:
-            cursor.execute(
+            cur.execute(
                 "INSERT INTO recipe_tags (recipe_id, tag) VALUES (?, ?)",
                 (recipe_id, tag),
             )
         self.connection.commit()
+    
+        def _load_recipe_by_row(self, row: tuple) -> Recipe:
+            cursor = self.connection.cursor()
+            (recipe_id, title, description, servings, prep_time_minutes) = row
+            cursor.execute(
+                "SELECT name, amount, unit FROM ingredients WHERE recipe_id = ?",
+                (recipe_id,),
+            )
+            ingredients = tuple(
+                Ingredient(name=name, amount=amount, unit=Unit(unit))
+                for name, amount, unit in cursor.fetchall()
+            )
+            cursor.execute(
+                "SELECT instruction FROM instructions WHERE recipe_id = ? "
+                "ORDER BY step_number",
+                (recipe_id,),
+            )
+            instructions = tuple(row[0] for row in cursor.fetchall())
+            cursor.execute(
+                "SELECT tag FROM recipe_tags WHERE recipe_id = ?", (recipe_id,)
+            )
+            tags = frozenset(row[0] for row in cursor.fetchall())
+            return Recipe(
+                title=title,
+                description=description,
+                servings=servings,
+                prep_time_minutes=prep_time_minutes,
+                ingredients=ingredients,
+                instructions=instructions,
+                tags=tags,
+                )
+
+    def get_recipe(self, title: str) -> Recipe:
+        cursor = self.connection.cursor()
+        cursor.execute(
+            "SELECT id, title, description, servings, prep_time_minutes "
+            "FROM recipes WHERE LOWER(title) = LOWER(?)",
+            (title,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            raise KeyError(f"Recipe '{title}' not found")
+        return self._load_recipe_by_row(row)
