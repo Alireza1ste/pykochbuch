@@ -172,3 +172,36 @@ class SqliteStore:
             );""")
         
         self.connection.commit()
+    
+    def save_recipe(self, recipe: Recipe) -> None:
+        cur = self.connection.cursor()
+        try:
+            cur.execute(
+            "INSERT INTO recipes (title, description, servings, prep_time_minutes)"
+            "VALUES (?, ?, ?, ?)",
+            (recipe.title, recipe.description, recipe.servings, recipe.prep_time_minutes),
+            )
+        except sqlite3.IntegrityError:
+            raise ValueError(f"Recipe '{recipe.title}' already exists.")
+        recipe_id = cur.lastrowid
+
+        for ingredient in recipe.ingredients:
+            cur.execute(
+                "INSERT INTO ingredients (recipe_id, name, amount, unit)"
+                "VALUES (?, ?, ?, ?)",
+                (recipe_id, ingredient.name, ingredient.amount, ingredient.unit)
+            )
+        
+        for step_number, instruction in enumerate(recipe.instructions, 1):
+            cur.execute(
+                "INSERT INTO instructions (recipe_id, step_number, instruction) "
+                "VALUES (?, ?, ?)",
+                (recipe_id, step_number, instruction),
+            )
+        
+        for tag in recipe.tags:
+            cursor.execute(
+                "INSERT INTO recipe_tags (recipe_id, tag) VALUES (?, ?)",
+                (recipe_id, tag),
+            )
+        self.connection.commit()
