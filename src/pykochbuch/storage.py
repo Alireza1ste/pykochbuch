@@ -152,7 +152,7 @@ class SqliteStore:
                 name TEXT NOT NULL,
                 amount REAL NOT NULL,
                 unit TEXT NOT NULL,
-                FOREIGN KEY (recipe_id) REFERENCES recipes(id)
+                FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
             );"""
         )
         cur.execute(
@@ -161,14 +161,14 @@ class SqliteStore:
                 recipe_id INTEGER NOT NULL,
                 step_number INTEGER NOT NULL,
                 instruction TEXT NOT NULL,
-                FOREIGN KEY (recipe_id) REFERENCES recipes(id)
+                FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
             );""")
         cur.execute(
             """CREATE TABLE IF NOT EXISTS recipe_tags (
                 recipe_id INTEGER NOT NULL,
                 tag TEXT NOT NULL,
                 PRIMARY KEY (recipe_id, tag),
-                FOREIGN KEY (recipe_id) REFERENCES recipes(id)
+                FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
             );""")
         
         self.connection.commit()
@@ -206,41 +206,41 @@ class SqliteStore:
             )
         self.connection.commit()
     
-        def _load_recipe_by_row(self, row: tuple) -> Recipe:
-            cursor = self.connection.cursor()
-            (recipe_id, title, description, servings, prep_time_minutes) = row
-            cursor.execute(
-                "SELECT name, amount, unit FROM ingredients WHERE recipe_id = ?",
-                (recipe_id,),
+    def _load_recipe_by_row(self, row: tuple) -> Recipe:
+        cursor = self.connection.cursor()
+        (recipe_id, title, description, servings, prep_time_minutes) = row
+        cursor.execute(
+            "SELECT name, amount, unit FROM ingredients WHERE recipe_id = ?",
+            (recipe_id,),
+        )
+        ingredients = tuple(
+            Ingredient(name=name, amount=amount, unit=Unit(unit))
+            for name, amount, unit in cursor.fetchall()
+        )
+        cursor.execute(
+            "SELECT instruction FROM instructions WHERE recipe_id = ? "
+            "ORDER BY step_number",
+            (recipe_id,),
+        )
+        instructions = tuple(row[0] for row in cursor.fetchall())
+        cursor.execute(
+            "SELECT tag FROM recipe_tags WHERE recipe_id = ?", (recipe_id,)
+        )
+        tags = frozenset(row[0] for row in cursor.fetchall())
+        return Recipe(
+            title=title,
+            description=description,
+            servings=servings,
+            prep_time_minutes=prep_time_minutes,
+            ingredients=ingredients,
+            instructions=instructions,
+            tags=tags,
             )
-            ingredients = tuple(
-                Ingredient(name=name, amount=amount, unit=Unit(unit))
-                for name, amount, unit in cursor.fetchall()
-            )
-            cursor.execute(
-                "SELECT instruction FROM instructions WHERE recipe_id = ? "
-                "ORDER BY step_number",
-                (recipe_id,),
-            )
-            instructions = tuple(row[0] for row in cursor.fetchall())
-            cursor.execute(
-                "SELECT tag FROM recipe_tags WHERE recipe_id = ?", (recipe_id,)
-            )
-            tags = frozenset(row[0] for row in cursor.fetchall())
-            return Recipe(
-                title=title,
-                description=description,
-                servings=servings,
-                prep_time_minutes=prep_time_minutes,
-                ingredients=ingredients,
-                instructions=instructions,
-                tags=tags,
-                )
 
     def get_recipe(self, title: str) -> Recipe:
         cursor = self.connection.cursor()
         cursor.execute(
-            "SELECT id, title, description, servings, prep_time_minutes "
+            "SELECT id, title, description, servings, prep_time_minutes"
             "FROM recipes WHERE LOWER(title) = LOWER(?)",
             (title,),
         )
@@ -248,3 +248,31 @@ class SqliteStore:
         if row is None:
             raise KeyError(f"Recipe '{title}' not found")
         return self._load_recipe_by_row(row)
+    
+    def get_all_recipes(self):
+        cur = self.connection.cursor()
+        cur.execute(
+            "SELECT id, title, description, servings, prep_time_minutes"
+            "FROM recipes;"
+        )
+        return [self._load_recipe_by_row(row) for row in cur.fetchall()]
+    
+    def delete_recipe(self, title):
+        cursor = self.connection.cursor()
+        cursor.execute(
+            "SELECT id FROM recipes WHERE LOWER(title) = LOWER(?)",
+            (title,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            raise KeyError(f"Recipe '{title}' not found")
+        cursor.execute(
+            "DELETE FROM recipes WHERE id = ?)",
+            (row[0],),
+        )
+        self.connection.commit()
+    
+    def search_by_title(self, query):
+        pattern = re.compile(query, re.IGNORECASE)
+        all_recipes = self.get_all_recipes()
+        return [r for r in all_recipes if pattern.search(r.title)]
