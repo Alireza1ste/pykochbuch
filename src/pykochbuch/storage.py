@@ -7,6 +7,14 @@ from pykochbuch.recipe import Recipe
 from pykochbuch.recipe_book import RecipeBook
 from pykochbuch.shopping_list import ShoppingList
 import json, sqlite3
+from abc import ABC, abstractmethod
+@dataclass
+class RecipeStore(ABC):
+    def save_recipe(self, recipe: Recipe) -> None: ...
+    def get_recipe(self, title: str) -> Recipe: ...
+    def get_all_recipes(self) -> list[Recipe]: ...
+    def delete_recipe(self, title: str) -> None: ...
+    def search_by_title(self, query: str) -> list[Recipe]: ...
 
 def _recipe_to_dict(recipe: Recipe) -> dict:
     return{
@@ -43,7 +51,7 @@ def _dict_to_recipe(data: dict) -> Recipe:
     )
 
 @dataclass
-class JsonStore:
+class JsonStore(RecipeStore):
     path: Path# my_path=Path("src/pykochbuch/all_recipes.json")
 
     def save_recipe(self, recipe: Recipe):
@@ -127,7 +135,26 @@ class JsonStore:
         return found_query
 
 @dataclass
-class SqliteStore:
+class InMemoryStore(RecipeStore):
+    _book: RecipeBook
+
+    def save_recipe(self, recipe: Recipe) -> None: 
+        self._book.add_recipe(recipe)
+
+    def get_recipe(self, title: str) -> Recipe:
+        return self._book.get_recipe(title)
+
+    def get_all_recipes(self) -> list[Recipe]:
+        return self._book.recipes
+    
+    def delete_recipe(self, title: str) -> None:
+        self._book.remove_recipe(title)
+
+    def search_by_title(self, query: str) -> list[Recipe]:
+        return self._book.search_by_title(query)
+
+@dataclass
+class SqliteStore(RecipeStore):
     db_path: str | Path
     connection : sqlite3.Connection = field(init=False)
 
@@ -177,7 +204,7 @@ class SqliteStore:
         cur = self.connection.cursor()
         try:
             cur.execute(
-            "INSERT INTO recipes (title, description, servings, prep_time_minutes)"
+            "INSERT INTO recipes (title, description, servings, prep_time_minutes) "
             "VALUES (?, ?, ?, ?)",
             (recipe.title, recipe.description, recipe.servings, recipe.prep_time_minutes),
             )
@@ -187,7 +214,7 @@ class SqliteStore:
 
         for ingredient in recipe.ingredients:
             cur.execute(
-                "INSERT INTO ingredients (recipe_id, name, amount, unit)"
+                "INSERT INTO ingredients (recipe_id, name, amount, unit) "
                 "VALUES (?, ?, ?, ?)",
                 (recipe_id, ingredient.name, ingredient.amount, ingredient.unit)
             )
@@ -240,7 +267,7 @@ class SqliteStore:
     def get_recipe(self, title: str) -> Recipe:
         cursor = self.connection.cursor()
         cursor.execute(
-            "SELECT id, title, description, servings, prep_time_minutes"
+            "SELECT id, title, description, servings, prep_time_minutes "
             "FROM recipes WHERE LOWER(title) = LOWER(?)",
             (title,),
         )
@@ -252,7 +279,7 @@ class SqliteStore:
     def get_all_recipes(self):
         cur = self.connection.cursor()
         cur.execute(
-            "SELECT id, title, description, servings, prep_time_minutes"
+            "SELECT id, title, description, servings, prep_time_minutes "
             "FROM recipes;"
         )
         return [self._load_recipe_by_row(row) for row in cur.fetchall()]
@@ -276,3 +303,4 @@ class SqliteStore:
         pattern = re.compile(query, re.IGNORECASE)
         all_recipes = self.get_all_recipes()
         return [r for r in all_recipes if pattern.search(r.title)]
+

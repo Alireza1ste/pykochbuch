@@ -4,7 +4,7 @@ from pykochbuch.ingredient import Ingredient
 from pykochbuch.recipe import Recipe
 from pykochbuch.recipe_book import RecipeBook
 from pykochbuch.shopping_list import ShoppingList
-from pykochbuch.storage import _dict_to_recipe, _recipe_to_dict, JsonStore
+from pykochbuch.storage import _dict_to_recipe, _recipe_to_dict, InMemoryStore, JsonStore, SqliteStore
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
