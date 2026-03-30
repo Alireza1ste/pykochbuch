@@ -216,7 +216,7 @@ class SqliteStore(RecipeStore):
             cur.execute(
                 "INSERT INTO ingredients (recipe_id, name, amount, unit) "
                 "VALUES (?, ?, ?, ?)",
-                (recipe_id, ingredient.name, ingredient.amount, ingredient.unit)
+                (recipe_id, ingredient.name, ingredient.amount, ingredient.unit.value)
             )
         
         for step_number, instruction in enumerate(recipe.instructions, 1):
@@ -294,7 +294,7 @@ class SqliteStore(RecipeStore):
         if row is None:
             raise KeyError(f"Recipe '{title}' not found")
         cursor.execute(
-            "DELETE FROM recipes WHERE id = ?)",
+            "DELETE FROM recipes WHERE id = ?",
             (row[0],),
         )
         self.connection.commit()

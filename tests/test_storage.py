@@ -163,4 +163,50 @@ def test_saving_and_loading_several_recipes_round_trip(temp_path, pancakes, cake
             instructions=("Mix", "Bake"),
             tags=frozenset(["difficult"]),
         )
-        ]        
+        ]  
+
+@pytest.fixture(params=["memory", "json", "sqlite"])
+def store(request, temp_path):
+    if request.param == "memory":
+        return InMemoryStore(_book=RecipeBook())
+    elif request.param == "json":
+        return JsonStore(temp_path / "recipes.json")
+    return SqliteStore(":memory:") 
+
+def test_saving_and_loading_round_trip_all_three(store, pancakes):
+    store.save_recipe(pancakes)
+    result = store.get_recipe("Pancakes")
+    assert result.title == "Pancakes"
+    assert result.servings == 4
+    assert len(result.ingredients) == 3
+    assert result.instructions == pancakes.instructions
+    assert result.tags == frozenset(["easy"])
+
+def test_get_all_empty(store):
+    assert store.get_all_recipes() == []
+
+def test_duplicate_raises(store, pancakes):
+    store.save_recipe(pancakes)
+    with pytest.raises(ValueError, match="already exists"):
+        store.save_recipe(pancakes)
+
+def test_delete_recipe(store, pancakes):
+    store.save_recipe(pancakes)
+    store.delete_recipe("Pancakes")
+    assert store.get_all_recipes() == []
+
+def test_delete_nonexistent_raises(store):
+    with pytest.raises(KeyError):
+        store.delete_recipe("Unknown")
+
+def test_recipe_without_tags(store):
+    recipe = Recipe(
+        title="Simple Soup",
+        servings=2,
+        ingredients=(Ingredient("water", 1, Unit.LITER),),
+        instructions=("Boil water",),
+    )
+    store.save_recipe(recipe)
+    result = store.get_recipe("Simple Soup")
+    assert result.title == "Simple Soup"
+    assert result.tags == frozenset()
