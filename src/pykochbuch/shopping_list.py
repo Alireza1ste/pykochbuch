@@ -1,10 +1,8 @@
 from __future__ import annotations
-from pykochbuch.recipe import Recipe
-from pykochbuch.recipe_book import RecipeBook
-from pykochbuch.ingredient import Ingredient
+from pykochbuch.models.recipe import Recipe
+from pykochbuch.models.ingredient import Ingredient
 from dataclasses import dataclass, field
-from pykochbuch.unit import Unit, CONVERSIONS, units_are_compatible, convert
-import re
+from pykochbuch.models.unit import units_are_compatible, convert
 
 @dataclass
 class ShoppingList:

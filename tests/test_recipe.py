@@ -1,7 +1,7 @@
 import pytest
-from pykochbuch.unit import Unit
-from pykochbuch.ingredient import Ingredient
-from pykochbuch.recipe import Recipe
+from pykochbuch.models.unit import Unit
+from pykochbuch.models.ingredient import Ingredient
+from pykochbuch.models.recipe import Recipe
 
 i1=Ingredient("flour", 500, Unit.GRAM)
 i2=Ingredient("water", 200, Unit.MILLILITER)

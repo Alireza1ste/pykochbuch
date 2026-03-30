@@ -1,5 +1,5 @@
 from __future__ import annotations
-from pykochbuch.recipe import Recipe
+from pykochbuch.models.recipe import Recipe
 from dataclasses import dataclass, field
 import re
 @dataclass

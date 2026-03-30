@@ -1,6 +1,6 @@
 import pytest
-from pykochbuch.ingredient import Ingredient
-from pykochbuch.unit import Unit
+from pykochbuch.models.ingredient import Ingredient
+from pykochbuch.models.unit import Unit
 
 def test_creation_of_ingredient_correctly():
     ingredient=Ingredient("Mehl", 500, Unit.GRAM)

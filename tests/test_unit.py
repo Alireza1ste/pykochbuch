@@ -1,5 +1,5 @@
 import pytest
-from pykochbuch.unit import Unit, units_are_compatible, CONVERSIONS, convert
+from pykochbuch.models.unit import Unit, units_are_compatible, CONVERSIONS, convert
 # from pykochbuch import unit
 
 def test_compatible_units():

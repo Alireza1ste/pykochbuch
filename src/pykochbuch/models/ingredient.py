@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from pykochbuch.unit import Unit
+from pykochbuch.models.unit import Unit
 @dataclass(frozen=True)
 class Ingredient:
     name: str

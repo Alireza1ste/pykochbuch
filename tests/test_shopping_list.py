@@ -1,7 +1,7 @@
-import pytest,re
-from pykochbuch.unit import Unit
-from pykochbuch.ingredient import Ingredient
-from pykochbuch.recipe import Recipe
+import pytest
+from pykochbuch.models.unit import Unit
+from pykochbuch.models.ingredient import Ingredient
+from pykochbuch.models.recipe import Recipe
 from pykochbuch.recipe_book import RecipeBook
 from pykochbuch.shopping_list import ShoppingList
 

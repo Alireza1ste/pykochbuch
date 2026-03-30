@@ -1,10 +1,12 @@
-import pytest,re, json
-from pykochbuch.unit import Unit
-from pykochbuch.ingredient import Ingredient
-from pykochbuch.recipe import Recipe
+import pytest, json
+from pykochbuch.models.unit import Unit
+from pykochbuch.models.ingredient import Ingredient
+from pykochbuch.models.recipe import Recipe
 from pykochbuch.recipe_book import RecipeBook
-from pykochbuch.shopping_list import ShoppingList
-from pykochbuch.storage import _dict_to_recipe, _recipe_to_dict, InMemoryStore, JsonStore, SqliteStore
+from pykochbuch.storage.serialization import _dict_to_recipe, _recipe_to_dict
+from pykochbuch.storage.memory_store import InMemoryStore
+from pykochbuch.storage.json_store import JsonStore
+from pykochbuch.storage.sqlite_store import SqliteStore
 from pathlib import Path
 from tempfile import TemporaryDirectory
 

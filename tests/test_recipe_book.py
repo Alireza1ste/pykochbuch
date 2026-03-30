@@ -1,7 +1,7 @@
 import pytest
-from pykochbuch.unit import Unit
-from pykochbuch.ingredient import Ingredient
-from pykochbuch.recipe import Recipe
+from pykochbuch.models.unit import Unit
+from pykochbuch.models.ingredient import Ingredient
+from pykochbuch.models.recipe import Recipe
 from pykochbuch.recipe_book import RecipeBook
 
 i1=Ingredient("flour", 500, Unit.GRAM)
