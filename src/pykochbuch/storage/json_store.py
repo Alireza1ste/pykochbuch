@@ -8,26 +8,42 @@ from pykochbuch.storage.serialization import _dict_to_recipe, _recipe_to_dict
 
 @dataclass
 class JsonStore(RecipeStore):
-    path: Path# my_path=Path("src/pykochbuch/all_recipes.json")
+    path: Path  # This is correct as a field my_path=Path("src/pykochbuch/all_recipes.json")
 
-    def save_recipe(self, recipe: Recipe):
-        existing_recipes= []
-        if self.path.exists():
-            with open(self.path, "r", encoding= "utf-8") as file:
-                try:
-                    existing_recipes= json.load(file)#what if the file is empty? it is not false to be empty.
-                except json.JSONDecodeError:
-                    existing_recipes=[]
-        
-        for recipe_dict in existing_recipes:
-            if recipe_dict["title"] == recipe.title:
-                raise ValueError(f"The recipe {recipe.title} already exists.")
-        
-        new_recipe_dict = _recipe_to_dict(recipe)
-        existing_recipes.append(new_recipe_dict)
+    # Add a check to ensure the folder exists when saving
+    def _ensure_file(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+
+    def save_recipe(self, recipe: Recipe) -> None:
+        try:
+            # 1. Ensure the folder exists
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+
+            # 2. Load existing data
+            recipes_list = []
+            if self.path.exists():
+                with open(self.path, "r", encoding="utf-8") as f:
+                    try:
+                        recipes_list = json.load(f)
+                    except json.JSONDecodeError:
+                        recipes_list = []
+
+            # 3. Convert (This is where the frozenset crash usually happens)
+            new_data = _recipe_to_dict(recipe)
+
+            # 4. Filter out old version and add new
+            recipes_list = [r for r in recipes_list if r.get('title') != recipe.title]
+            recipes_list.append(new_data)
+
+            # 5. Write to file
+            with open(self.path, "w", encoding="utf-8") as f:
+                json.dump(recipes_list, f, indent=4, ensure_ascii=False)
             
-        with open(self.path, "w", encoding="utf-8") as file:
-            json.dump(existing_recipes, file, indent=4, ensure_ascii= False)
+            print(f"Successfully wrote to: {self.path.absolute()}")
+
+        except Exception as e:
+            print(f"INTERNAL STORE ERROR: {e}")
+            raise e # Pass it back to the GUI to show the error box
     
     def get_recipe(self, title):
         if self.path.exists():

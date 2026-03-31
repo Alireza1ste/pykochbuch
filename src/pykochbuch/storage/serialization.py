@@ -4,20 +4,20 @@ from pykochbuch.models.recipe import Recipe
 
 
 def _recipe_to_dict(recipe: Recipe) -> dict:
-    return{
+    return {
         "title": recipe.title,
-        "description": recipe.description,
         "servings": recipe.servings,
+        "description": recipe.description,
         "prep_time_minutes": recipe.prep_time_minutes,
-        "ingredients":[
-            {
-                "name": ingredient.name,
-                "amount": ingredient.amount,
-                "unit": ingredient.unit.value,
-            } for ingredient in recipe.ingredients
-        ],
         "instructions": list(recipe.instructions),
-        "tags": sorted(list(recipe.tags)),
+        "tags": list(recipe.tags),  # <--- MUST CONVERT TO LIST
+        "ingredients": [
+            {
+                "name": ing.name,
+                "amount": ing.amount,
+                "unit": ing.unit.value
+            } for ing in recipe.ingredients
+        ]
     }
 
 def _dict_to_recipe(data: dict) -> Recipe:

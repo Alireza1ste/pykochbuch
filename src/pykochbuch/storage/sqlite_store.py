@@ -153,7 +153,12 @@ class SqliteStore(RecipeStore):
         self.connection.commit()
     
     def search_by_title(self, query):
-        pattern = re.compile(query, re.IGNORECASE)
+        # 1. Escape the query so users can type things like "(" without crashing
+        safe_query = re.escape(query)
+        pattern = re.compile(safe_query, re.IGNORECASE)
+        
         all_recipes = self.get_all_recipes()
+        
+        # 2. Return the filtered list
         return [r for r in all_recipes if pattern.search(r.title)]
 

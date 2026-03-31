@@ -1,0 +1,34 @@
+[
+    {
+        "title": "Fried eggs",
+        "servings": 4,
+        "description": "Healthy and quick to prepare",
+        "prep_time_minutes": 15,
+        "instructions": [
+            "melt the butter",
+            "add eggs and salt",
+            "fried them all"
+        ],
+        "tags": [
+            "Easy",
+            "Dinner"
+        ],
+        "ingredients": [
+            {
+                "name": "salt",
+                "amount": 5.0,
+                "unit": "g"
+            },
+            {
+                "name": "eggs",
+                "amount": 2.0,
+                "unit": "pc"
+            },
+            {
+                "name": "butter",
+                "amount": 10.0,
+                "unit": "g"
+            }
+        ]
+    }
+]
