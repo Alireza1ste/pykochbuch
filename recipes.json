@@ -30,5 +30,68 @@
                 "unit": "g"
             }
         ]
+    },
+    {
+        "title": "Soup",
+        "servings": 1,
+        "description": "simple soup",
+        "prep_time_minutes": 15,
+        "instructions": [
+            "Combine all together",
+            "heat"
+        ],
+        "tags": [
+            "Easy",
+            "Dinner"
+        ],
+        "ingredients": [
+            {
+                "name": "watter",
+                "amount": 1.0,
+                "unit": "l"
+            },
+            {
+                "name": "salt",
+                "amount": 10.0,
+                "unit": "g"
+            },
+            {
+                "name": "tomatoes",
+                "amount": 2.0,
+                "unit": "pc"
+            }
+        ]
+    },
+    {
+        "title": "Fried eggs2",
+        "servings": 4,
+        "description": "Healthy and quick to prepare",
+        "prep_time_minutes": 15,
+        "instructions": [
+            "melt the butter",
+            "add eggs and salt",
+            "fried them all"
+        ],
+        "tags": [
+            "Easy",
+            "Dinner"
+        ],
+        "ingredients": [
+            {
+                "name": "salt",
+                "amount": 5.0,
+                "unit": "g"
+            },
+            {
+                "name": "eggs",
+                "amount": 2.0,
+                "unit": "pc"
+            },
+            {
+                "name": "butter",
+                "amount": 10.0,
+                "unit": "g"
+            }
+        ]
     }
 ]

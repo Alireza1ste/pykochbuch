@@ -1,19 +1,14 @@
 import tkinter as tk
 from tkinter import messagebox, filedialog, ttk
-from pathlib import Path
 from pykochbuch.storage.serialization import _recipe_to_dict, _dict_to_recipe
 from pykochbuch.storage.json_store import JsonStore
 from pykochbuch.storage.sqlite_store import SqliteStore
 from pykochbuch.storage.memory_store import InMemoryStore
 from pykochbuch.recipe_book import RecipeBook
-from tkinter import messagebox, ttk, filedialog
 from pathlib import Path
-from tkinter import messagebox, filedialog, ttk
-from pathlib import Path
+import json
 
-# --- IMPORT YOUR MODULES HERE ---
-# from pykochbuch.models import Recipe
-# from pykochbuch.storage import SqliteStore, JsonStore, InMemoryStore, RecipeBook
+
 class AddRecipeDialog(tk.Toplevel):
     def __init__(self, parent, app_instance, store):
         super().__init__(parent)
@@ -140,6 +135,62 @@ class CookbookGUI:
     def setup_styles(self):
         self.style = ttk.Style()
         self.style.configure("Admin.TButton", font=("Arial", 10, "bold"))
+    
+    def import_from_sqlite(self):
+        """Loads recipes from a DIFFERENT .db file into the CURRENT store."""
+        file_path = filedialog.askopenfilename(
+            title="Select SQLite Database to Import",
+            filetypes=[("SQLite Database", "*.db"), ("All files", "*.*")]
+        )
+        if not file_path:
+            return
+
+        try:
+            # 1. Create a temporary store to read the external file
+            # Your dataclass handles the connection and table checks automatically
+            external_store = SqliteStore(db_path=Path(file_path))
+            external_recipes = external_store.get_all_recipes()
+            
+            # 2. Save each recipe into our active store
+            count = 0
+            for recipe in external_recipes:
+                try:
+                    self.store.save_recipe(recipe)
+                    count += 1
+                except ValueError:
+                    # Skip duplicates if the title already exists
+                    continue
+            
+            messagebox.showinfo("Success", f"Imported {count} recipes from {Path(file_path).name}")
+            self.refresh_list()
+            
+        except Exception as e:
+            messagebox.showerror("Import Error", f"Failed to load SQL file: {e}")
+
+    def export_to_sqlite(self):
+        """Saves all recipes from the CURRENT store into a NEW .db file."""
+        file_path = filedialog.asksaveasfilename(
+            title="Export to New SQLite Database",
+            defaultextension=".db",
+            filetypes=[("SQLite Database", "*.db")]
+        )
+        if not file_path:
+            return
+
+        try:
+            # 1. Initialize a new database file using your dataclass
+            new_store = SqliteStore(db_path=Path(file_path))
+            
+            # 2. Get all data from our current active store
+            all_recipes = self.store.get_all_recipes()
+            
+            # 3. Write it all into the new file
+            for recipe in all_recipes:
+                new_store.save_recipe(recipe)
+                
+            messagebox.showinfo("Success", f"All recipes exported to {file_path}")
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Failed to save SQL file: {e}")
 
     def setup_ui(self):
         # --- TOP: Search Bar ---
@@ -160,7 +211,7 @@ class CookbookGUI:
         paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
         paned.pack(fill=tk.BOTH, expand=True, padx=10)
 
-        # Left Listbox Side
+        # Left Listbox Side for checkmarks
         list_frame = ttk.Frame(paned)
         paned.add(list_frame, weight=1)
         
@@ -189,15 +240,26 @@ class CookbookGUI:
         self.details_text.pack(fill=tk.BOTH, expand=True)
 
         # --- BOTTOM: Action Buttons ---
-        action_bar = ttk.LabelFrame(self.root, text=" Administration ", padding="10")
+        action_bar = ttk.LabelFrame(self.root, text=" Data Management ", padding="10")
         action_bar.pack(fill=tk.X, padx=10, pady=10)
 
-        ttk.Button(action_bar, text="➕ Add New Recipe", command=self.add_recipe_dialog).pack(side=tk.LEFT, padx=5)
-        ttk.Button(action_bar, text="🗑 Delete Selected", command=self.delete_current).pack(side=tk.LEFT, padx=5)
+        # Basic Actions (Left)
+        ttk.Button(action_bar, text="➕ Add Recipe", command=self.add_recipe_dialog).pack(side=tk.LEFT, padx=5)
+        ttk.Button(action_bar, text="🗑 Delete", command=self.delete_current).pack(side=tk.LEFT, padx=5)
         
-        # Refresh and Export on the right
-        ttk.Button(action_bar, text="🔄 Refresh", command=lambda: self.refresh_list()).pack(side=tk.RIGHT, padx=5)
-        ttk.Button(action_bar, text="📥 Export JSON", command=self.export_to_json).pack(side=tk.RIGHT, padx=5)
+        # SQL Management (Right)
+        sql_frame = ttk.Frame(action_bar)
+        sql_frame.pack(side=tk.RIGHT, padx=10)
+        ttk.Label(sql_frame, text="SQL:", font=("Arial", 8, "bold")).pack(side=tk.LEFT)
+        ttk.Button(sql_frame, text="📥 Import", command=self.import_from_sqlite).pack(side=tk.LEFT, padx=2)
+        ttk.Button(sql_frame, text="📤 Export", command=self.export_to_sqlite).pack(side=tk.LEFT, padx=2)
+
+        # JSON Management (Right)
+        json_frame = ttk.Frame(action_bar)
+        json_frame.pack(side=tk.RIGHT, padx=10)
+        ttk.Label(json_frame, text="JSON:", font=("Arial", 8, "bold")).pack(side=tk.LEFT)
+        ttk.Button(json_frame, text="📥 Import", command=self.import_from_json).pack(side=tk.LEFT, padx=2)
+        ttk.Button(json_frame, text="📤 Export", command=self.export_to_json).pack(side=tk.LEFT, padx=2)
 
 
     # --- LOGIC ---
@@ -293,7 +355,35 @@ class CookbookGUI:
             
         except Exception as e:
             messagebox.showerror("Export Error", f"Failed to export: {str(e)}")
+    
+    def import_from_json(self):
+        
+        # 1. Select the file
+        file_path = filedialog.askopenfilename(
+            title="Select JSON Recipe File",
+            filetypes=[("JSON files", "*.json")]
+        )
+        
+        if not file_path:
+            return
 
+        try:
+            # 2. Read the JSON
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            
+            # 3. Convert and save each recipe into the CURRENT store
+            count = 0
+            for item in data:
+                recipe = _dict_to_recipe(item)
+                self.store.save_recipe(recipe)
+                count += 1
+            
+            messagebox.showinfo("Import Success", f"Imported {count} recipes into {type(self.store).__name__}")
+            self.refresh_list() # Update the UI
+            
+        except Exception as e:
+            messagebox.showerror("Import Error", f"Could not import recipes: {e}")
 # --- LAUNCHER ---
 
 def main():
