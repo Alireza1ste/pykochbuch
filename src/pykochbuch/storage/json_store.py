@@ -28,22 +28,27 @@ class JsonStore(RecipeStore):
                     except json.JSONDecodeError:
                         recipes_list = []
 
-            # 3. Convert (This is where the frozenset crash usually happens)
+            # --- 2.5 DUPLICATE CHECK (This fixes your test error) ---
+            if any(r.get('title') == recipe.title for r in recipes_list):
+                raise ValueError(f"Recipe '{recipe.title}' already exists.")
+
+            # 3. Convert recipe to dict (using your serialization helper)
+            from pykochbuch.storage.serialization import _recipe_to_dict
             new_data = _recipe_to_dict(recipe)
 
-            # 4. Filter out old version and add new
-            recipes_list = [r for r in recipes_list if r.get('title') != recipe.title]
+            # 4. Add to list
             recipes_list.append(new_data)
 
             # 5. Write to file
             with open(self.path, "w", encoding="utf-8") as f:
                 json.dump(recipes_list, f, indent=4, ensure_ascii=False)
             
-            print(f"Successfully wrote to: {self.path.absolute()}")
-
+        except ValueError as ve:
+            # Re-raise ValueErrors so the test/GUI can see them
+            raise ve
         except Exception as e:
             print(f"INTERNAL STORE ERROR: {e}")
-            raise e # Pass it back to the GUI to show the error box
+            raise e
     
     def get_recipe(self, title):
         if self.path.exists():
