@@ -6,7 +6,8 @@ from pykochbuch.storage.sqlite_store import SqliteStore
 from pykochbuch.storage.memory_store import InMemoryStore
 from pykochbuch.recipe_book import RecipeBook
 from pathlib import Path
-import json
+import json, re
+from pykochbuch.models import Recipe, Ingredient, Unit
 
 
 class AddRecipeDialog(tk.Toplevel):
@@ -69,8 +70,6 @@ class AddRecipeDialog(tk.Toplevel):
                   font=("Arial", 11, "bold"), height=2, command=self.save).pack(fill=tk.X)
 
     def save(self):
-        from pykochbuch.models import Recipe, Ingredient, Unit
-        import re
 
         try:
             # 1. Capture and Sanitize Inputs
@@ -125,6 +124,8 @@ class CookbookGUI:
     def __init__(self, root, store):
         self.root = root
         self.store = store
+        # ADD THIS LINE RIGHT HERE:
+        self.show_shopping_window = lambda totals: ShoppingListWindow(self.root, totals)
         self.root.title(f"Cookbook Administrator - {type(store).__name__}")
         self.root.geometry("1000x650")
         
@@ -167,55 +168,83 @@ class CookbookGUI:
         except Exception as e:
             messagebox.showerror("Import Error", f"Failed to load SQL file: {e}")
 
+    def get_selected_recipes(self):
+        """Helper to get Recipe objects from the current Listbox selection."""
+        # This returns a tuple of integers (e.g., (0, 2, 5))
+        indices = self.recipe_listbox.curselection()
+        
+        print(f"DEBUG: Selected Indices: {indices}") # Check your terminal!
+
+        if not indices:
+            # If nothing is selected, ask to export all
+            if messagebox.askyesno("Export All?", "No recipes selected. Export all available recipes?"):
+                return self.store.get_all_recipes()
+            return []
+            
+        selected_recipes = []
+        for i in indices:
+            # Get the title text from the listbox at that specific index
+            title = self.recipe_listbox.get(i)
+            # Fetch the actual recipe object from the database/json
+            recipe = self.store.get_recipe(title)
+            selected_recipes.append(recipe)
+            
+        return selected_recipes
+
     def export_to_sqlite(self):
-        """Saves all recipes from the CURRENT store into a NEW .db file."""
+        recipes_to_export = self.get_selected_recipes()
+        if not recipes_to_export:
+            return
+
         file_path = filedialog.asksaveasfilename(
-            title="Export to New SQLite Database",
             defaultextension=".db",
             filetypes=[("SQLite Database", "*.db")]
         )
-        if not file_path:
-            return
-
-        try:
-            # 1. Initialize a new database file using your dataclass
-            new_store = SqliteStore(db_path=Path(file_path))
-            
-            # 2. Get all data from our current active store
-            all_recipes = self.store.get_all_recipes()
-            
-            # 3. Write it all into the new file
-            for recipe in all_recipes:
-                new_store.save_recipe(recipe)
-                
-            messagebox.showinfo("Success", f"All recipes exported to {file_path}")
-        except Exception as e:
-            messagebox.showerror("Export Error", f"Failed to save SQL file: {e}")
+        
+        if file_path:
+            try:
+                # Initialize the new database file
+                new_store = SqliteStore(db_path=Path(file_path))
+                for recipe in recipes_to_export:
+                    new_store.save_recipe(recipe)
+                messagebox.showinfo("Success", f"Exported {len(recipes_to_export)} recipes.")
+            except Exception as e:
+                messagebox.showerror("Error", f"Export failed: {e}")
 
     def setup_ui(self):
-        # --- TOP: Search Bar ---
-        top_frame = ttk.Frame(self.root, padding="10")
-        top_frame.pack(fill=tk.X)
-
-        ttk.Label(top_frame, text="🔍 Search Recipes:").pack(side=tk.LEFT)
-        
-        # This variable tracks what you type in real-time
+        # 1. INITIALIZE VARIABLES (Must be first to avoid TraceErrors)
+        # These hold the state of your search filters
         self.search_var = tk.StringVar()
-        self.search_var.trace_add("write", self.on_search_change)
+        self.max_prep_var = tk.StringVar(value="180") # Default to 180 mins
         
-        # Link ONLY THIS ONE entry to search_var
-        self.search_entry = ttk.Entry(top_frame, textvariable=self.search_var)
-        self.search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10)
+        # --- TOP: ADVANCED SEARCH & FILTER PANEL ---
+        top_frame = ttk.LabelFrame(self.root, text=" 🔍 Advanced Search & Filters ", padding="10")
+        top_frame.pack(fill=tk.X, padx=10, pady=5)
 
-        # --- MIDDLE: List and Details ---
+        # Row 0, Col 0-1: Text Query
+        ttk.Label(top_frame, text="Query:").grid(row=0, column=0, padx=5, sticky="e")
+        self.search_entry = ttk.Entry(top_frame, textvariable=self.search_var, width=25)
+        self.search_entry.grid(row=0, column=1, padx=5, sticky="w")
+
+        # Row 0, Col 2-3: Search Mode Dropdown
+        ttk.Label(top_frame, text="Search in:").grid(row=0, column=2, padx=5, sticky="e")
+        self.search_mode = ttk.Combobox(top_frame, values=["Title", "Tag", "Ingredient"], state="readonly", width=12)
+        self.search_mode.set("Title")
+        self.search_mode.grid(row=0, column=3, padx=5, sticky="w")
+
+        # Row 0, Col 4-5: Max Prep Time
+        ttk.Label(top_frame, text="Max Prep (mins):").grid(row=0, column=4, padx=5, sticky="e")
+        self.max_prep_entry = ttk.Entry(top_frame, textvariable=self.max_prep_var, width=6)
+        self.max_prep_entry.grid(row=0, column=5, padx=5, sticky="w")
+
+        # --- MIDDLE: LIST AND DETAILS (PANED WINDOW) ---
         paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
-        paned.pack(fill=tk.BOTH, expand=True, padx=10)
+        paned.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-        # Left Listbox Side for checkmarks
+        # Left Side: Recipe List
         list_frame = ttk.Frame(paned)
         paned.add(list_frame, weight=1)
         
-        # Added a scrollbar so you can actually scroll through long lists
         list_scroll = ttk.Scrollbar(list_frame)
         list_scroll.pack(side=tk.RIGHT, fill=tk.Y)
 
@@ -223,63 +252,102 @@ class CookbookGUI:
             list_frame, 
             font=("Arial", 11), 
             yscrollcommand=list_scroll.set,
-            exportselection=False # This keeps the recipe highlighted when you click buttons
+            exportselection=False,
+            selectmode=tk.MULTIPLE  # Essential for Selective Export and Shopping List
         )
         self.recipe_listbox.pack(fill=tk.BOTH, expand=True)
         list_scroll.config(command=self.recipe_listbox.yview)
         self.recipe_listbox.bind("<<ListboxSelect>>", self.on_recipe_select)
 
-        # Right Text View Side
+        # Right Side: Recipe Details
         detail_frame = ttk.Frame(paned)
         paned.add(detail_frame, weight=3)
+        
         self.title_label = ttk.Label(detail_frame, text="Select a Recipe", font=("Arial", 14, "bold"))
         self.title_label.pack(pady=5, anchor="w")
         
-        # Added some padding to the text box for better readability
         self.details_text = tk.Text(detail_frame, state=tk.DISABLED, wrap=tk.WORD, bg="#f9f9f9", padx=10, pady=10)
         self.details_text.pack(fill=tk.BOTH, expand=True)
 
-        # --- BOTTOM: Action Buttons ---
-        action_bar = ttk.LabelFrame(self.root, text=" Data Management ", padding="10")
+        # --- BOTTOM: ACTION BUTTONS ---
+        action_bar = ttk.LabelFrame(self.root, text=" Administration & Tools ", padding="10")
         action_bar.pack(fill=tk.X, padx=10, pady=10)
 
-        # Basic Actions (Left)
+        # Left Side: Core Recipe Management
         ttk.Button(action_bar, text="➕ Add Recipe", command=self.add_recipe_dialog).pack(side=tk.LEFT, padx=5)
-        ttk.Button(action_bar, text="🗑 Delete", command=self.delete_current).pack(side=tk.LEFT, padx=5)
+        ttk.Button(action_bar, text="🗑 Delete Selected", command=self.delete_current).pack(side=tk.LEFT, padx=5)
+        ttk.Button(action_bar, text="🛒 Shopping List", command=self.generate_shopping_list).pack(side=tk.LEFT, padx=5)
         
-        # SQL Management (Right)
-        sql_frame = ttk.Frame(action_bar)
-        sql_frame.pack(side=tk.RIGHT, padx=10)
-        ttk.Label(sql_frame, text="SQL:", font=("Arial", 8, "bold")).pack(side=tk.LEFT)
-        ttk.Button(sql_frame, text="📥 Import", command=self.import_from_sqlite).pack(side=tk.LEFT, padx=2)
-        ttk.Button(sql_frame, text="📤 Export", command=self.export_to_sqlite).pack(side=tk.LEFT, padx=2)
+        # Right Side: Data Management (Using Clear Text Labels)
+        
+        # SQL Group
+        sql_group = ttk.Frame(action_bar)
+        sql_group.pack(side=tk.RIGHT, padx=10)
+        ttk.Label(sql_group, text="SQL DB:", font=("Arial", 8, "bold")).pack(side=tk.LEFT)
+        ttk.Button(sql_group, text="Import SQL", command=self.import_from_sqlite).pack(side=tk.LEFT, padx=2)
+        ttk.Button(sql_group, text="Export SQL", command=self.export_to_sqlite).pack(side=tk.LEFT, padx=2)
 
-        # JSON Management (Right)
-        json_frame = ttk.Frame(action_bar)
-        json_frame.pack(side=tk.RIGHT, padx=10)
-        ttk.Label(json_frame, text="JSON:", font=("Arial", 8, "bold")).pack(side=tk.LEFT)
-        ttk.Button(json_frame, text="📥 Import", command=self.import_from_json).pack(side=tk.LEFT, padx=2)
-        ttk.Button(json_frame, text="📤 Export", command=self.export_to_json).pack(side=tk.LEFT, padx=2)
+        # JSON Group
+        json_group = ttk.Frame(action_bar)
+        json_group.pack(side=tk.RIGHT, padx=10)
+        ttk.Label(json_group, text="JSON File:", font=("Arial", 8, "bold")).pack(side=tk.LEFT)
+        ttk.Button(json_group, text="Import JSON", command=self.import_from_json).pack(side=tk.LEFT, padx=2)
+        ttk.Button(json_group, text="Export JSON", command=self.export_to_json).pack(side=tk.LEFT, padx=2)
+
+        # Global Refresh
+        ttk.Button(action_bar, text="🔄 Refresh", command=lambda: self.refresh_list()).pack(side=tk.RIGHT, padx=5)
+
+        # --- FINAL STEP: ATTACH LISTENERS ---
+        # We attach these LAST so they don't fire while the UI components are still being created
+        self.search_var.trace_add("write", self.run_advanced_search)
+        self.max_prep_var.trace_add("write", self.run_advanced_search)
+        self.search_mode.bind("<<ComboboxSelected>>", self.run_advanced_search)
 
 
     # --- LOGIC ---
 
-    def on_search_change(self, *args):
-        # 1. Get the text from the search box
-        query = self.search_var.get().strip()
-        
-        # 2. If empty, show everything
-        if not query:
-            self.refresh_list()
+    def run_advanced_search(self, *args):
+        # Ensure search_mode exists before calling .get()
+        if not hasattr(self, 'search_mode'):
             return
 
-        # 3. Otherwise, filter using your search function
+        query = self.search_var.get().strip().lower()
+        mode = self.search_mode.get()
+        
         try:
-            results = self.store.search_by_title(query)
-            # IMPORTANT: Pass the results to refresh_list
-            self.refresh_list(results) 
-        except Exception as e:
-            print(f"Search Error: {e}")
+            val = self.max_prep_var.get().strip()
+            max_prep = int(val) if val else 999
+        except ValueError:
+            max_prep = 999
+            
+        # ... the rest of your filtering logic ...
+        all_data = self.store.get_all_recipes()
+
+        # 3. Perform the filtering in Python memory
+        filtered = []
+        for r in all_data:
+            # Check Prep Time first
+            if r.prep_time_minutes > max_prep:
+                continue
+            
+            # If there's no text query, just add based on time
+            if not query:
+                filtered.append(r)
+                continue
+
+            # Check Text Query based on selected Mode
+            if mode == "Title":
+                if query in r.title.lower():
+                    filtered.append(r)
+            elif mode == "Tag":
+                if any(query in t.lower() for t in r.tags):
+                    filtered.append(r)
+            elif mode == "Ingredient":
+                if any(query in i.name.lower() for i in r.ingredients):
+                    filtered.append(r)
+
+        # 4. Update the Listbox with the results
+        self.refresh_list(filtered)
 
     def refresh_list(self, recipes=None):
         """Clears and repopulates the listbox."""
@@ -328,33 +396,32 @@ class CookbookGUI:
                 self.refresh_list()
 
     def export_to_json(self):
-        import json
         from pykochbuch.storage.serialization import _recipe_to_dict
+        import json
+
+        # 1. Get ONLY the selected objects
+        recipes_to_export = self.get_selected_recipes()
         
-        # 1. Ask the user where to save
-        file_path = filedialog.asksaveasfilename(
-            defaultextension=".json",
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-        )
-        
-        if not file_path:
+        # If the user canceled the "Export All?" prompt, stop here
+        if not recipes_to_export:
             return
 
-        try:
-            # 2. Get all data from the current store
-            all_recipes = self.store.get_all_recipes()
-            
-            # 3. Convert recipe objects to plain dictionaries
-            export_data = [_recipe_to_dict(r) for r in all_recipes]
-            
-            # 4. Physically write the file to the disk
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(export_data, f, indent=4, ensure_ascii=False)
-            
-            messagebox.showinfo("Success", f"Successfully exported {len(export_data)} recipes to:\n{file_path}")
-            
-        except Exception as e:
-            messagebox.showerror("Export Error", f"Failed to export: {str(e)}")
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json")]
+        )
+        
+        if file_path:
+            try:
+                # 2. Convert ONLY the selected recipes
+                export_data = [_recipe_to_dict(r) for r in recipes_to_export]
+                
+                with open(file_path, "w", encoding="utf-8") as f:
+                    json.dump(export_data, f, indent=4, ensure_ascii=False)
+                
+                messagebox.showinfo("Success", f"Exported {len(export_data)} selected recipes.")
+            except Exception as e:
+                messagebox.showerror("Error", f"Export failed: {e}")
     
     def import_from_json(self):
         
@@ -384,6 +451,71 @@ class CookbookGUI:
             
         except Exception as e:
             messagebox.showerror("Import Error", f"Could not import recipes: {e}")
+    
+    def generate_shopping_list(self):
+        recipes = self.get_selected_recipes()
+        if not recipes:
+            return
+
+        # Dictionary to store totals: {(name, unit): amount}
+        totals = {}
+
+        for recipe in recipes:
+            for ing in recipe.ingredients:
+                key = (ing.name.lower().strip(), ing.unit.value)
+                totals[key] = totals.get(key, 0) + ing.amount
+
+        self.show_shopping_window(totals)
+
+class ShoppingListWindow(tk.Toplevel):
+    def __init__(self, parent, totals):
+        super().__init__(parent)
+        self.title("Your Shopping List")
+        self.geometry("400x500")
+        
+        main_frame = tk.Frame(self, padx=20, pady=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(main_frame, text="🛒 Groceries Needed:", font=("Arial", 12, "bold")).pack(anchor="w", pady=(0, 10))
+
+        # Scrollable area for long lists
+        canvas = tk.Canvas(main_frame)
+        scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Sort alphabetically and create checkboxes
+        for (name, unit), amount in sorted(totals.items()):
+            var = tk.BooleanVar()
+            display_text = f"{amount} {unit} {name.capitalize()}"
+            cb = tk.Checkbutton(scrollable_frame, text=display_text, variable=var, font=("Arial", 10))
+            cb.pack(anchor="w", pady=2)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Bottom Buttons
+        btn_frame = tk.Frame(main_frame)
+        btn_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        tk.Button(btn_frame, text="Close", command=self.destroy).pack(side=tk.RIGHT)
+        tk.Button(btn_frame, text="Copy to Clipboard", 
+                  command=lambda: self.copy_to_clipboard(totals)).pack(side=tk.RIGHT, padx=5)
+
+    def copy_to_clipboard(self, totals):
+        text_list = [f"- {amt} {unit} {name.capitalize()}" for (name, unit), amt in sorted(totals.items())]
+        self.clipboard_clear()
+        self.clipboard_append("\n".join(text_list))
+        messagebox.showinfo("Copied", "Shopping list copied to clipboard!")
+
+
 # --- LAUNCHER ---
 
 def main():
