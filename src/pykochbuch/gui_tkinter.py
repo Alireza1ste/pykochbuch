@@ -397,8 +397,6 @@ class CookbookGUI:
                 self.refresh_list()
 
     def export_to_json(self):
-        from pykochbuch.storage.serialization import _recipe_to_dict
-        import json
 
         # 1. Get ONLY the selected objects
         recipes_to_export = self.get_selected_recipes()
