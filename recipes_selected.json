@@ -10,8 +10,8 @@
             "fried them all"
         ],
         "tags": [
-            "Dinner",
-            "Easy"
+            "Easy",
+            "Dinner"
         ],
         "ingredients": [
             {
@@ -41,12 +41,12 @@
             "heat"
         ],
         "tags": [
-            "Dinner",
-            "Easy"
+            "Easy",
+            "Dinner"
         ],
         "ingredients": [
             {
-                "name": "watter",
+                "name": "water",
                 "amount": 1.0,
                 "unit": "l"
             },
@@ -59,6 +59,38 @@
                 "name": "tomatoes",
                 "amount": 2.0,
                 "unit": "pc"
+            }
+        ]
+    },
+    {
+        "title": "Fried eggs2",
+        "servings": 4,
+        "description": "Healthy and quick to prepare",
+        "prep_time_minutes": 15,
+        "instructions": [
+            "melt the butter",
+            "add eggs and salt",
+            "fried them all"
+        ],
+        "tags": [
+            "Easy",
+            "Dinner"
+        ],
+        "ingredients": [
+            {
+                "name": "salt",
+                "amount": 5.0,
+                "unit": "g"
+            },
+            {
+                "name": "eggs",
+                "amount": 2.0,
+                "unit": "pc"
+            },
+            {
+                "name": "butter",
+                "amount": 10.0,
+                "unit": "g"
             }
         ]
     }
