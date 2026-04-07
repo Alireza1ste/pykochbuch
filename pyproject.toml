@@ -1,6 +1,6 @@
 [project]
-name = "pykochbuch"
-version = "0.1.0"
+name = "pykochbuch-alireza-2026"
+version = "1.0.0"
 description = "A simple cookbook project"
 readme = "README.md"
 requires-python = ">=3.13"
